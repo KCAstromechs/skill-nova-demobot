@@ -34,7 +34,6 @@ class astrogpio(MycroftSkill):
 
     def __init__(self):
         super(astrogpio, self).__init__(name="astrogpio")
-
         #initilization code for the GPIO board.
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(signalPin, GPIO.OUT)
@@ -43,27 +42,37 @@ class astrogpio(MycroftSkill):
         GPIO.output(clockPin, False)
 
     def initialize(self):
-        self.log.debug("Loaded!")
+        self.log.debug("Loaded!") 
+        #self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
 
     #Sends GPIO command to trigger collector toggle
     @intent_file_handler('collector.intent')
     def handle_toggle_collector(self, message):
         self.speak("Received toggle")
-        utt = str(message.data["utterance"])
+        utt = str(message.data.get("utterance", ""))
         self.send_msg_GPIO(4, utt)
 
     #Sends GPIO command to trigger a ball shot
     @intent_file_handler('shooter.intent')
     def handle_shoot_ball(self, message):
+        self.log.info("Firing ball")
         self.speak("firing ball")
-        utt = str(message.data["utterance"])
+        utt = str(message.data.get("utterance", ""))
         self.send_msg_GPIO(3, utt)
 
     #Sends GPIO command to trigger a straight drive with an distance of 0-63 inches
     @intent_file_handler('driveStraight.intent')
-    def handle_drive_straight(self, message):
+    def handle_drive_forwards(self, message):
+        self.speak("Driving straight")
         utt = str(message.data["utterance"])
         self.send_msg_GPIO(11, utt)
+
+    #Sends GPIO command to trigger a straight backwards drive with an distance of 0-63 inches
+    @intent_file_handler('driveBackwards.intent')
+    def handle_drive_backwards(self, message):
+        self.speak("Driving backwards")
+        utt = str(message.data["utterance"])
+        self.send_msg_GPIO(14, utt)
 
 
     def send_msg_GPIO(self, command, msg):
@@ -82,19 +91,19 @@ class astrogpio(MycroftSkill):
 
         self.log.info("data = " + data)
         self.log.info("command = " + command)
-        self.log.info("SSS " + str(msg))
+        self.log.info("SSS " + str(msg)) 
 
         #turns on the clockpin for .1s to signify a message is about to be sent
         clockState = True
         GPIO.output(clockPin, clockState)
-        time.sleep(.1)
+        time.sleep(.1) 
 
         for i in command:
             # send the next bit in the 4-bit command
             GPIO.output(signalPin, bool(int(i))) #writes the bit onto the single wire
             clockState = not clockState #flips the clockpin tracker
             GPIO.output(clockPin, clockState) #changes state of clockpin to match the tracker
-            self.log.info("SSS " + str(bool(int(i))))
+            self.log.info("SSS " + str(bool(int(i)))) 
 
             #wait a lil bit for the OpMode to catch up
             time.sleep(.1)
