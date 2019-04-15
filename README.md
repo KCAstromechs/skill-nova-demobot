@@ -8,4 +8,14 @@ RCA Port    | 2   | 4 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 | 26 | 28 
              
  HDMI                         Ethernet                        USB     USB
 ```
-atach the colors to the same colored wire exept the blue goes to the black. put the blue in the first hole, put the red in the thirtyfirst hole and put the yellow in the thirtyeight hole.
+
+# Physical connection
+
+* Attach the 3-pin header to the 3-pin connector on the coiling cable, connecting colors to the same-colored wire except the blue, which goes to black.
+* Insert the blue jumper wire into first header pin at the back of Mycroft.  Similary, put the red in the 31st hole and put the yellow in the 38th hole.  (See the block header illustration above)
+* Connect the power lead with the barrel connector to the back of Mycroft
+* Connect the three standard batteries
+* Attach the "Mycroft" phone
+
+
+
