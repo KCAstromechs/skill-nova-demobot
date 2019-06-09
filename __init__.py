@@ -40,7 +40,6 @@ class astrogpio(MycroftSkill):
 
     def initialize(self):
         self.log.debug("Loaded!")
-        #self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
         self.add_event('mycroft.mark1.demo' self.demo)
 
     #Sends GPIO command to trigger collector toggle
@@ -132,6 +131,32 @@ class astrogpio(MycroftSkill):
         self.log.info("clock=" + str(bool(False)))
         time.sleep(2.5)
 
+
+    # BELOW is actions that are triggered by Java
+
+    def execute_command(self, commandID):
+        if commandID = 1:
+            wink()
+        if commandID = 2:
+            speakRandomGreeting()
+        if commandID = 3:
+            speakRandomGoodbye()
+        if commandID = 4:
+            speakRandomAffirmation()
+        if commandID = 5
+            speakRandomNegation()
+
+
+    def wink():
+        self.enclosure.eyes_blink(choice(["r", "l"]))
+    def speakRandomGreeting():
+        self.speak_dialog("greeting")
+    def speakRandomGoodbye():
+        self.speak_dialog("goodbye")
+    def speakRandomNegation():
+        self.speak_dialog("negativeResponse")
+    def speakRandomAffirmation():
+        self.speak_dialog("affirmativeResponse")
 
 def create_skill():
     return astrogpio()
