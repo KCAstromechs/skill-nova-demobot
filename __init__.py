@@ -15,19 +15,16 @@
 from os.path import dirname, join
 from mycroft import MycroftSkill, intent_handler, intent_file_handler
 from mycroft.util.parse import extract_number
-
-
 from adapt.intent import IntentBuilder
 from mycroft.audio import is_speaking
 from mycroft.skills.core import MycroftSkill, intent_handler
 from random import choice
-
 import RPi.GPIO as GPIO
 import time
 clockPin = 8
 signalPin = 26
 incomingSignalPin = 27   # not tested yet
-
+isDemo = True            # Controls whether "Hey Mycroft" fires the ball -- default Yes
 
 class astrogpio(MycroftSkill):
     colorToggle = False
@@ -42,8 +39,9 @@ class astrogpio(MycroftSkill):
         GPIO.output(clockPin, False)
 
     def initialize(self):
-        self.log.debug("Loaded!") 
+        self.log.debug("Loaded!")
         #self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+        self.add_event('mycroft.mark1.demo' self.demo)
 
     #Sends GPIO command to trigger collector toggle
     @intent_file_handler('collector.intent')
@@ -59,6 +57,16 @@ class astrogpio(MycroftSkill):
         self.speak("firing ball")
         utt = str(message.data.get("utterance", ""))
         self.send_msg_GPIO(3, utt)
+
+    def demo(self):
+        if isDemo:
+            isDemo = False
+            self.remove_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+            self.speak("Entering demo mode, say 'Hey Mycroft' to launch a ball")
+        else:
+            isDemo = True
+            self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+            self.speak("Exited demo mode")
 
     #Sends GPIO command to trigger a straight drive with an distance of 0-63 inches
     @intent_file_handler('driveStraight.intent')
@@ -82,7 +90,7 @@ class astrogpio(MycroftSkill):
         #converts number to binary with at least 6 digits including leading zeros
         data = '{0:06b}'.format(int(data))
 
-        #reverses the order of the binary to allow the OpMode to read the information as it reads it 
+        #reverses the order of the binary to allow the OpMode to read the information as it reads it
         data = data[::-1]
 
         #repeats the last two steps
@@ -91,19 +99,19 @@ class astrogpio(MycroftSkill):
 
         self.log.info("data = " + data)
         self.log.info("command = " + command)
-        self.log.info("SSS " + str(msg)) 
+        self.log.info("SSS " + str(msg))
 
         #turns on the clockpin for .1s to signify a message is about to be sent
         clockState = True
         GPIO.output(clockPin, clockState)
-        time.sleep(.1) 
+        time.sleep(.1)
 
         for i in command:
             # send the next bit in the 4-bit command
             GPIO.output(signalPin, bool(int(i))) #writes the bit onto the single wire
             clockState = not clockState #flips the clockpin tracker
             GPIO.output(clockPin, clockState) #changes state of clockpin to match the tracker
-            self.log.info("SSS " + str(bool(int(i)))) 
+            self.log.info("SSS " + str(bool(int(i))))
 
             #wait a lil bit for the OpMode to catch up
             time.sleep(.1)
@@ -123,6 +131,8 @@ class astrogpio(MycroftSkill):
         GPIO.output(clockPin, False)
         self.log.info("clock=" + str(bool(False)))
         time.sleep(2.5)
+
+
 def create_skill():
     return astrogpio()
 
