@@ -19,6 +19,10 @@ from adapt.intent import IntentBuilder
 from mycroft.audio import is_speaking
 from mycroft.skills.core import MycroftSkill, intent_handler
 from random import choice
+
+from threading import Thread, Lock
+
+
 import RPi.GPIO as GPIO
 import time
 clockPin = 8
@@ -26,21 +30,36 @@ signalPin = 26
 incomingSignalPin = 27   # not tested yet
 isDemo = True            # Controls whether "Hey Mycroft" fires the ball -- default Yes
 
+
+is_master = False        # True when Mycroft sends signals to the robot
+                         # False when the robot sends singals to Mycroft
+
 class astrogpio(MycroftSkill):
     colorToggle = False
 
     def __init__(self):
         super(astrogpio, self).__init__(name="astrogpio")
-        #initilization code for the GPIO board.
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(signalPin, GPIO.OUT)
-        GPIO.setup(clockPin, GPIO.OUT)
-        GPIO.output(signalPin, False)
-        GPIO.output(clockPin, False)
+
+        if is_master:
+            # This skill will drive the communication and clock
+            # initilization code for the GPIO board.
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(signalPin, GPIO.OUT)
+            GPIO.setup(clockPin, GPIO.OUT)
+            GPIO.output(signalPin, False)
+            GPIO.output(clockPin, False)
+            self.threadComms = None
+        else:
+            # Java will drive the communication, listen on a thread
+            self.threadComms = RobotCommThread(self)
 
     def initialize(self):
         self.log.debug("Loaded!")
         self.add_event('mycroft.mark1.demo' self.demo)
+
+    def shutdown(self):
+        if self.threadComms:
+            self.threadComms.shutdown()
 
     #Sends GPIO command to trigger collector toggle
     @intent_file_handler('collector.intent')
@@ -131,32 +150,72 @@ class astrogpio(MycroftSkill):
         self.log.info("clock=" + str(bool(False)))
         time.sleep(2.5)
 
-
-    # BELOW is actions that are triggered by Java
-
+    # BELOW are actions that are triggered by Java
     def execute_command(self, commandID):
         if commandID = 1:
-            wink()
+            self.wink()
         if commandID = 2:
-            speakRandomGreeting()
+            self.speakRandomGreeting()
         if commandID = 3:
-            speakRandomGoodbye()
+            self.speakRandomGoodbye()
         if commandID = 4:
-            speakRandomAffirmation()
-        if commandID = 5
-            speakRandomNegation()
-
+            self.speakRandomAffirmation()
+        if commandID = 5:
+            self.speakRandomNegation()
 
     def wink():
         self.enclosure.eyes_blink(choice(["r", "l"]))
+
     def speakRandomGreeting():
         self.speak_dialog("greeting")
+
     def speakRandomGoodbye():
         self.speak_dialog("goodbye")
+
     def speakRandomNegation():
         self.speak_dialog("negativeResponse")
+
     def speakRandomAffirmation():
         self.speak_dialog("affirmativeResponse")
+
+#####################################################################
+# Serial Communication management
+
+class RobotCommThread(Thread):
+
+    def __init__(self, skill):
+        self.parent_skill = skill
+        self.should_run = True
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(signalPin, GPIO.IN)
+        GPIO.setup(clockPin, GPIO.IN)
+
+        self.start()
+
+    def shutdown(self):
+        self.should_run = False
+        self.join() # Wait until the run() finishes before returning
+
+    def run(self):
+        commandID = None
+        commandReady = False
+        last_clock = GPIO.input(clockPin)
+
+        while self.should_run:
+            clock = GPIO.input(clockPin)
+            if last_clock != clock:
+                # Clock changed!
+                bit = GPIO.input(signalPin)
+                # TODO: do stuff to build commandID from the GPIO pins
+                # TODO: when commandID is ready: commandReady = True
+                last_clock = clock
+
+            if commandReady:
+                self.parent_skill.execute_command(commandID)
+                commandID = None
+                commandReady = False
+            time.sleep(0.1)
 
 def create_skill():
     return astrogpio()
