@@ -55,7 +55,7 @@ class astrogpio(MycroftSkill):
 
     def initialize(self):
         self.log.debug("Loaded!")
-        self.add_event('mycroft.mark1.demo' self.demo)
+        self.add_event('mycroft.mark1.demo', self.demo)
 
     def shutdown(self):
         if self.threadComms:
@@ -79,12 +79,14 @@ class astrogpio(MycroftSkill):
     def demo(self):
         if isDemo:
             isDemo = False
-            self.remove_event('recognizer_loop:record_begin', self.handle_shoot_ball)
-            self.speak("Entering demo mode, say 'Hey Mycroft' to launch a ball")
+            #self.remove_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+            #self.speak("Entering demo mode, say 'Hey Mycroft' to launch a ball")
+            self.speakRandomAffirmation()
         else:
             isDemo = True
-            self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
-            self.speak("Exited demo mode")
+            #self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+            #self.speak("Exited demo mode")
+            self.speakRandomNegation()
 
     #Sends GPIO command to trigger a straight drive with an distance of 0-63 inches
     @intent_file_handler('driveStraight.intent')
@@ -152,15 +154,15 @@ class astrogpio(MycroftSkill):
 
     # BELOW are actions that are triggered by Java
     def execute_command(self, commandID):
-        if commandID = 1:
+        if commandID == 1:
             self.wink()
-        if commandID = 2:
+        if commandID == 2:
             self.speakRandomGreeting()
-        if commandID = 3:
+        if commandID == 3:
             self.speakRandomGoodbye()
-        if commandID = 4:
+        if commandID == 4:
             self.speakRandomAffirmation()
-        if commandID = 5:
+        if commandID == 5:
             self.speakRandomNegation()
 
     def wink():
@@ -184,13 +186,13 @@ class astrogpio(MycroftSkill):
 class RobotCommThread(Thread):
 
     def __init__(self, skill):
+        super(RobotCommThread, self).__init__()
         self.parent_skill = skill
         self.should_run = True
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(signalPin, GPIO.IN)
         GPIO.setup(clockPin, GPIO.IN)
-
         self.start()
 
     def shutdown(self):
