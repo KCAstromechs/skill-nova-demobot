@@ -9,10 +9,10 @@ RCA Port    | 2  | 4 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 | 26 | 28 |
  HDMI                         Ethernet                        USB     USB
 ```
 
-BK = Black = Ground (pin 1)
-GN = Green = GPIO_26 (pin 38) = Signal1
-RD = Red = GPIO_8 (pin 31) = Clock
-WH = White = GPIO_11 (ping 34) = Signal2
+BK = Black = Ground (pin 1)<br/>
+GN = Green = GPIO_26 (pin 38) = Signal1<br/>
+RD = Red = GPIO_8 (pin 31) = Clock<br/>
+WH = White = GPIO_11 (ping 34) = Signal2<br/>
 
 see the Mark 1 pin mapping: https://github.com/MycroftAI/enclosure-mark1#io-pins
 
