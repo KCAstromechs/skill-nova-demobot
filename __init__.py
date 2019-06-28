@@ -19,6 +19,7 @@ from adapt.intent import IntentBuilder
 from mycroft.audio import is_speaking
 from mycroft.skills.core import MycroftSkill, intent_handler
 from random import choice
+from time import sleep
 
 from threading import Thread, Lock
 
@@ -27,7 +28,7 @@ import RPi.GPIO as GPIO
 import time
 clockPin = 8
 signalPin = 26
-incomingSignalPin = 27   # not tested yet
+incomingSignalPin = 11   # not tested yet
 isDemo = True            # Controls whether "Hey Mycroft" fires the ball -- default Yes
 
 
@@ -58,7 +59,7 @@ class astrogpio(MycroftSkill):
         self.add_event('mycroft.mark1.demo', self.demo)
 
     def shutdown(self):
-        if self.threadComms:
+        if self.threadComms.is_alive():
             self.threadComms.shutdown()
 
     #Sends GPIO command to trigger collector toggle
@@ -77,15 +78,18 @@ class astrogpio(MycroftSkill):
         self.send_msg_GPIO(3, utt)
 
     def demo(self):
+        global isDemo
         if isDemo:
             isDemo = False
-            #self.remove_event('recognizer_loop:record_begin', self.handle_shoot_ball)
-            #self.speak("Entering demo mode, say 'Hey Mycroft' to launch a ball")
+            if is_master == True:
+                self.remove_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+                self.speak("Entering demo mode, say 'Hey Mycroft' to launch a ball")
             self.speakRandomAffirmation()
         else:
             isDemo = True
-            #self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
-            #self.speak("Exited demo mode")
+            if is_master == True:
+                self.add_event('recognizer_loop:record_begin', self.handle_shoot_ball)
+                self.speak("Exited demo mode")
             self.speakRandomNegation()
 
     #Sends GPIO command to trigger a straight drive with an distance of 0-63 inches
@@ -129,6 +133,7 @@ class astrogpio(MycroftSkill):
         for i in command:
             # send the next bit in the 4-bit command
             GPIO.output(signalPin, bool(int(i))) #writes the bit onto the single wire
+
             clockState = not clockState #flips the clockpin tracker
             GPIO.output(clockPin, clockState) #changes state of clockpin to match the tracker
             self.log.info("SSS " + str(bool(int(i))))
@@ -155,30 +160,47 @@ class astrogpio(MycroftSkill):
     # BELOW are actions that are triggered by Java
     def execute_command(self, commandID):
         if commandID == 1:
-            self.wink()
+            # self.speakRandomAffirmation()
+            self.speakRollItBackToMe()
         if commandID == 2:
-            self.speakRandomGreeting()
+            self.wink()
         if commandID == 3:
-            self.speakRandomGoodbye()
+            self.speakHereItComes()
         if commandID == 4:
-            self.speakRandomAffirmation()
+            self.speakRandomGreeting()
         if commandID == 5:
+            self.speakRandomGoodbye()
+        if commandID == 6:
+            self.speakWouldYouLikeToPlay()
+        if commandID == 7:
             self.speakRandomNegation()
 
-    def wink():
+    def wink(self):
         self.enclosure.eyes_blink(choice(["r", "l"]))
 
-    def speakRandomGreeting():
+    def speakRandomGreeting(self):
         self.speak_dialog("greeting")
 
-    def speakRandomGoodbye():
+    def speakRandomGoodbye(self):
         self.speak_dialog("goodbye")
 
-    def speakRandomNegation():
-        self.speak_dialog("negativeResponse")
+    def speakRollItBackToMe(self):
+        self.speak_dialog("rollItBackToMe")
 
-    def speakRandomAffirmation():
+    def speakRandomNegation(self):
+        self.speak_dialog("negativeResponse")
+        self.log.debug("NEGATION")
+
+    def speakRandomAffirmation(self):
         self.speak_dialog("affirmativeResponse")
+        self.log.debug("AFFIRMATION")
+
+    def speakWouldYouLikeToPlay(self):
+        self.speak_dialog("wouldYouLikeToPlay")
+
+    def speakHereItComes(self):
+        self.speak_dialog("hereItComes")
+
 
 #####################################################################
 # Serial Communication management
@@ -203,22 +225,29 @@ class RobotCommThread(Thread):
         commandID = None
         commandReady = False
         last_clock = GPIO.input(clockPin)
+        self.parent_skill.log.info("Starting pin listener thread")
 
         while self.should_run:
             clock = GPIO.input(clockPin)
-            if last_clock != clock:
+            if clock == 1:
+                self.parent_skill.log.info("Start receiving command")
+                last_clock = 1
+                commandID = 0
                 # Clock changed!
-                bit = GPIO.input(signalPin)
-                # TODO: do stuff to build commandID from the GPIO pins
-                # TODO: when commandID is ready: commandReady = True
-                last_clock = clock
-
-            if commandReady:
+                for i in range(3):
+                    while clock == last_clock:
+                        clock = GPIO.input(clockPin)
+                        sleep(.01)
+                    self.parent_skill.log.info("bit " + str(i + 1) + "read")
+                    if GPIO.input(signalPin):
+                        commandID += 1 << (2-i)
+                    last_clock = clock
                 self.parent_skill.execute_command(commandID)
-                commandID = None
-                commandReady = False
-            time.sleep(0.1)
+                self.parent_skill.log.info("Received command ID " + str(commandID))
+                sleep(.1)
+
+        # self.parent_skill.log.info("Stopping pin listener thread")
+
 
 def create_skill():
     return astrogpio()
-
